@@ -1,0 +1,29 @@
+{
+  "name": "rxddit-discord-bot",
+  "version": "1.0.0",
+  "description": "Discord bot that converts Reddit links to rxddit for better embeds",
+  "main": "dist/bot.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bot.js",
+    "dev": "ts-node src/bot.ts",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "reddit",
+    "rxddit"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
