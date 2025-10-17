@@ -107,8 +107,20 @@ client.on(Events.MessageCreate, async (message: Message) => {
             // Convert Reddit links to rxddit links
             const convertedContent = convertMessageLinks(message.content);
 
+            // Check if message is from a guild (not DM)
+            if (!message.guild) {
+                console.log('⚠️ Ignoring DM message');
+                return;
+            }
+
+            // Check if channel is text-based and supports permissions
+            if (!message.channel.isTextBased() || message.channel.isDMBased()) {
+                console.log('⚠️ Channel type not supported');
+                return;
+            }
+
             // Check if bot has permission to send messages
-            const botMember = message.guild?.members.cache.get(client.user!.id);
+            const botMember = message.guild.members.cache.get(client.user!.id);
             if (!botMember || !message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.SendMessages)) {
                 console.log('❌ No permission to send messages in this channel');
                 return;
