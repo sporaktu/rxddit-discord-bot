@@ -8,21 +8,16 @@ import {
     MessageReaction,
     User,
     PartialMessageReaction,
-    PartialUser
+    PartialUser,
+    Partials
 } from 'discord.js';
+import { getDatabase, closeDatabase, MessageDatabase } from './database';
+import { detectRedditLinks, convertToRxddit, convertMessageLinks, ROBOT_EMOJI } from './linkUtils';
 
 // Load environment variables
 config();
 
-// Interface for stored message data
-interface StoredMessage {
-    originalContent: string;
-    authorId: string;
-    botMessageId: string;
-    channelId: string;
-}
-
-// Initialize Discord client with necessary intents
+// Initialize Discord client with necessary intents and partials
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -30,66 +25,46 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions,
     ],
+    partials: [
+        Partials.Message,
+        Partials.Reaction,
+        Partials.User,
+    ],
 });
 
-// Store original messages for potential reversion
-// Map structure: messageId -> StoredMessage
-const messageStore = new Map<string, StoredMessage>();
+// Initialize database
+let db: MessageDatabase;
 
-// Robot emoji for reactions
-const ROBOT_EMOJI = '🤖';
-
-// Reddit URL regex patterns
-const REDDIT_PATTERNS: RegExp[] = [
-    /https?:\/\/(www\.)?reddit\.com\/r\/[^\s]+/gi,
-    /https?:\/\/(old|new)\.reddit\.com\/r\/[^\s]+/gi,
-];
+// Cleanup interval in milliseconds (24 hours)
+const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// Message retention in days
+const MESSAGE_RETENTION_DAYS = 30;
 
 /**
- * Detects Reddit links in a message
- * @param content - Message content
- * @returns Array of Reddit URLs found
+ * Run database cleanup to remove old messages
  */
-function detectRedditLinks(content: string): string[] {
-    const links: string[] = [];
-    REDDIT_PATTERNS.forEach(pattern => {
-        const matches = content.match(pattern);
-        if (matches) {
-            links.push(...matches);
-        }
-    });
-    return links;
-}
-
-/**
- * Converts Reddit URLs to rxddit URLs
- * @param url - Original Reddit URL
- * @returns Converted rxddit URL
- */
-function convertToRxddit(url: string): string {
-    return url
-        .replace(/https?:\/\/(www\.)?reddit\.com/gi, 'https://rxddit.com')
-        .replace(/https?:\/\/(old|new)\.reddit\.com/gi, 'https://rxddit.com');
-}
-
-/**
- * Converts all Reddit links in a message to rxddit links
- * @param content - Original message content
- * @returns Content with converted links
- */
-function convertMessageLinks(content: string): string {
-    let convertedContent = content;
-    REDDIT_PATTERNS.forEach(pattern => {
-        convertedContent = convertedContent.replace(pattern, (match) => convertToRxddit(match));
-    });
-    return convertedContent;
+function runCleanup(): void {
+    const deleted = db.cleanupOldMessages(MESSAGE_RETENTION_DAYS);
+    if (deleted > 0) {
+        console.log(`Cleaned up ${deleted} old message(s) from database`);
+    }
 }
 
 // Event: Bot is ready
 client.once(Events.ClientReady, () => {
-    console.log(`✅ Logged in as ${client.user?.tag}`);
-    console.log(`🤖 rxddit Discord Bot is now running!`);
-    console.log(`📝 Monitoring for Reddit links...`);
+    console.log(`Logged in as ${client.user?.tag}`);
+    console.log(`rxddit Discord Bot is now running!`);
+    console.log(`Monitoring for Reddit links...`);
+
+    // Initialize database
+    db = getDatabase();
+    console.log(`Database initialized`);
+
+    // Run cleanup immediately on startup (in case bot was offline)
+    runCleanup();
+
+    // Schedule cleanup of old messages (run daily)
+    setInterval(runCleanup, CLEANUP_INTERVAL_MS);
 });
 
 // Event: New message created
@@ -101,28 +76,36 @@ client.on(Events.MessageCreate, async (message: Message) => {
     const redditLinks = detectRedditLinks(message.content);
 
     if (redditLinks.length > 0) {
-        console.log(`🔍 Found ${redditLinks.length} Reddit link(s) in message from ${message.author.tag}`);
+        console.log(`Found ${redditLinks.length} Reddit link(s) in message from ${message.author.tag}`);
 
         try {
             // Convert Reddit links to rxddit links
             const convertedContent = convertMessageLinks(message.content);
+            const convertedLinks = redditLinks.map(link => convertToRxddit(link));
 
             // Check if message is from a guild (not DM)
             if (!message.guild) {
-                console.log('⚠️ Ignoring DM message');
+                console.log(`Ignoring DM message`);
                 return;
             }
 
             // Check if channel is text-based and supports permissions
             if (!message.channel.isTextBased() || message.channel.isDMBased()) {
-                console.log('⚠️ Channel type not supported');
+                console.log(`Channel type not supported`);
+                return;
+            }
+
+            // Check if client user is available (should always be after login)
+            const botUser = client.user;
+            if (!botUser) {
+                console.log(`Bot user not available`);
                 return;
             }
 
             // Check if bot has permission to send messages
-            const botMember = message.guild.members.cache.get(client.user!.id);
+            const botMember = message.guild.members.cache.get(botUser.id);
             if (!botMember || !message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.SendMessages)) {
-                console.log('❌ No permission to send messages in this channel');
+                console.log(`No permission to send messages in this channel`);
                 return;
             }
 
@@ -131,29 +114,31 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 `*${message.author} posted:*\n${convertedContent}`
             );
 
-            // Store original message info for potential reversion
-            messageStore.set(message.id, {
-                originalContent: message.content,
-                authorId: message.author.id,
-                botMessageId: botMessage.id,
+            // Store message info in database
+            db.storeMessage({
+                messageId: message.id,
                 channelId: message.channel.id,
+                guildId: message.guild.id,
+                authorId: message.author.id,
+                authorTag: message.author.tag,
+                originalContent: message.content,
+                convertedContent: convertedContent,
+                originalLinks: JSON.stringify(redditLinks),
+                convertedLinks: JSON.stringify(convertedLinks),
+                botMessageId: botMessage.id,
+                createdAt: Date.now()
             });
 
             // React to the original message with robot emoji
             if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.AddReactions)) {
                 await message.react(ROBOT_EMOJI);
-                console.log(`✅ Converted and reacted to message from ${message.author.tag}`);
+                console.log(`Converted and reacted to message from ${message.author.tag}`);
             } else {
-                console.log('⚠️ No permission to add reactions');
+                console.log(`No permission to add reactions`);
             }
 
-            // Clean up stored messages after 24 hours
-            setTimeout(() => {
-                messageStore.delete(message.id);
-            }, 24 * 60 * 60 * 1000);
-
         } catch (error) {
-            console.error('❌ Error processing message:', error);
+            console.error(`Error processing message:`, error);
         }
     }
 });
@@ -171,7 +156,7 @@ client.on(Events.MessageReactionAdd, async (
         try {
             await reaction.fetch();
         } catch (error) {
-            console.error('❌ Error fetching reaction:', error);
+            console.error(`Error fetching reaction:`, error);
             return;
         }
     }
@@ -180,63 +165,93 @@ client.on(Events.MessageReactionAdd, async (
     if (reaction.emoji.name !== ROBOT_EMOJI) return;
 
     const messageId = reaction.message.id;
-    const storedMessage = messageStore.get(messageId);
+    const storedMessage = db.getMessage(messageId);
 
     // Check if we have stored info for this message
     if (!storedMessage) return;
 
+    // Store the reaction in database (before checking if it's a revert)
+    const isAuthorReaction = user.id === storedMessage.authorId;
+    db.storeReaction({
+        messageId: messageId,
+        userId: user.id,
+        userTag: user.tag || 'Unknown',
+        emoji: ROBOT_EMOJI,
+        reactedAt: Date.now(),
+        isRevertReaction: isAuthorReaction
+    });
+
     // Check if the user who reacted is the original message author
-    if (user.id !== storedMessage.authorId) {
-        console.log(`⚠️ User ${user.tag} is not the original author, ignoring reaction`);
+    if (!isAuthorReaction) {
+        console.log(`User ${user.tag} is not the original author, ignoring reaction`);
         return;
     }
 
-    console.log(`🔄 Original author ${user.tag} reacted to revert the message`);
+    // Atomically try to mark as reverted - prevents race conditions
+    // Only the first caller will succeed; subsequent calls return false
+    const didRevert = db.markAsReverted(messageId);
+    if (!didRevert) {
+        console.log(`Message ${messageId} is already reverted`);
+        return;
+    }
+
+    console.log(`Original author ${user.tag} reacted to revert the message`);
 
     try {
         // Get the bot's message and delete it
         const channel = await client.channels.fetch(storedMessage.channelId);
         if (channel?.isTextBased()) {
-            const botMessage = await channel.messages.fetch(storedMessage.botMessageId);
-            if (botMessage) {
-                await botMessage.delete();
-                console.log('✅ Deleted converted message');
+            try {
+                const botMessage = await channel.messages.fetch(storedMessage.botMessageId);
+                if (botMessage) {
+                    await botMessage.delete();
+                    console.log(`Deleted converted message`);
+                }
+            } catch (fetchError) {
+                console.log(`Bot message already deleted or not found`);
             }
         }
 
         // Remove the bot's reaction from the original message
-        await reaction.users.remove(client.user!);
-        console.log('✅ Removed bot reaction from original message');
+        const botUser = client.user;
+        if (botUser) {
+            await reaction.users.remove(botUser);
+            console.log(`Removed bot reaction from original message`);
+        }
 
-        // Clean up stored message
-        messageStore.delete(messageId);
+        console.log(`Message revert completed`);
 
     } catch (error) {
-        console.error('❌ Error reverting message:', error);
+        console.error(`Error reverting message:`, error);
     }
 });
 
 // Login to Discord
 if (!process.env.DISCORD_TOKEN) {
-    console.error('❌ DISCORD_TOKEN not found in environment variables!');
-    console.error('💡 Please create a .env file with your bot token');
+    console.error(`DISCORD_TOKEN not found in environment variables!`);
+    console.error(`Please create a .env file with your bot token`);
     process.exit(1);
 }
 
 client.login(process.env.DISCORD_TOKEN).catch((error: Error) => {
-    console.error('❌ Failed to login:', error);
+    console.error(`Failed to login:`, error);
     process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-    console.log('\n👋 Shutting down bot...');
+    console.log(`\nShutting down bot...`);
+    closeDatabase();
     client.destroy();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('\n👋 Shutting down bot...');
+    console.log(`\nShutting down bot...`);
+    closeDatabase();
     client.destroy();
     process.exit(0);
 });
+
+// Export for testing
+export { client };

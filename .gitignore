@@ -22,3 +22,12 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Database
+data/
+
+# Test artifacts
+coverage/
+test-data/
+*.db
+junit.xml

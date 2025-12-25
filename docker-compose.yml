@@ -9,6 +9,9 @@ services:
       - .env
     environment:
       - NODE_ENV=production
+    volumes:
+      # Persist SQLite database across container restarts
+      - bot-data:/app/data
     # Resource limits (optional)
     deploy:
       resources:
@@ -18,3 +21,7 @@ services:
         reservations:
           cpus: '0.1'
           memory: 128M
+
+volumes:
+  bot-data:
+    driver: local
