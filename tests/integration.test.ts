@@ -181,13 +181,13 @@ describe('Integration Tests', () => {
                 createdAt: Date.now()
             });
 
-            // First revert
+            // First revert - should succeed
             const firstRevert = db.markAsReverted(messageId);
             expect(firstRevert).toBe(true);
 
-            // Second revert attempt (should still succeed but no change)
+            // Second revert attempt - should fail (already reverted, atomic operation)
             const secondRevert = db.markAsReverted(messageId);
-            expect(secondRevert).toBe(true);
+            expect(secondRevert).toBe(false);
 
             // Message should still be reverted
             const message = db.getMessage(messageId);

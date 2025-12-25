@@ -139,10 +139,12 @@ export class MessageDatabase {
         return result || null;
     }
 
-    // Mark a message as reverted
+    // Mark a message as reverted (atomic - only succeeds if not already reverted)
+    // Returns true if this call performed the revert, false if already reverted
     markAsReverted(messageId: string): boolean {
         const stmt = this.db.prepare(`
-            UPDATE messages SET is_reverted = 1 WHERE message_id = ?
+            UPDATE messages SET is_reverted = 1
+            WHERE message_id = ? AND is_reverted = 0
         `);
         const result = stmt.run(messageId);
         return result.changes > 0;

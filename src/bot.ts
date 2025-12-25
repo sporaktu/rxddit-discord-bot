@@ -35,6 +35,21 @@ const client = new Client({
 // Initialize database
 let db: MessageDatabase;
 
+// Cleanup interval in milliseconds (24 hours)
+const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// Message retention in days
+const MESSAGE_RETENTION_DAYS = 30;
+
+/**
+ * Run database cleanup to remove old messages
+ */
+function runCleanup(): void {
+    const deleted = db.cleanupOldMessages(MESSAGE_RETENTION_DAYS);
+    if (deleted > 0) {
+        console.log(`Cleaned up ${deleted} old message(s) from database`);
+    }
+}
+
 // Event: Bot is ready
 client.once(Events.ClientReady, () => {
     console.log(`Logged in as ${client.user?.tag}`);
@@ -45,13 +60,11 @@ client.once(Events.ClientReady, () => {
     db = getDatabase();
     console.log(`Database initialized`);
 
+    // Run cleanup immediately on startup (in case bot was offline)
+    runCleanup();
+
     // Schedule cleanup of old messages (run daily)
-    setInterval(() => {
-        const deleted = db.cleanupOldMessages(30);
-        if (deleted > 0) {
-            console.log(`Cleaned up ${deleted} old message(s) from database`);
-        }
-    }, 24 * 60 * 60 * 1000);
+    setInterval(runCleanup, CLEANUP_INTERVAL_MS);
 });
 
 // Event: New message created
@@ -82,8 +95,15 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 return;
             }
 
+            // Check if client user is available (should always be after login)
+            const botUser = client.user;
+            if (!botUser) {
+                console.log(`Bot user not available`);
+                return;
+            }
+
             // Check if bot has permission to send messages
-            const botMember = message.guild.members.cache.get(client.user!.id);
+            const botMember = message.guild.members.cache.get(botUser.id);
             if (!botMember || !message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.SendMessages)) {
                 console.log(`No permission to send messages in this channel`);
                 return;
@@ -150,25 +170,28 @@ client.on(Events.MessageReactionAdd, async (
     // Check if we have stored info for this message
     if (!storedMessage) return;
 
-    // Check if message is already reverted
-    if (storedMessage.isReverted) {
-        console.log(`Message ${messageId} is already reverted`);
-        return;
-    }
-
-    // Store the reaction in database
+    // Store the reaction in database (before checking if it's a revert)
+    const isAuthorReaction = user.id === storedMessage.authorId;
     db.storeReaction({
         messageId: messageId,
         userId: user.id,
         userTag: user.tag || 'Unknown',
         emoji: ROBOT_EMOJI,
         reactedAt: Date.now(),
-        isRevertReaction: user.id === storedMessage.authorId
+        isRevertReaction: isAuthorReaction
     });
 
     // Check if the user who reacted is the original message author
-    if (user.id !== storedMessage.authorId) {
+    if (!isAuthorReaction) {
         console.log(`User ${user.tag} is not the original author, ignoring reaction`);
+        return;
+    }
+
+    // Atomically try to mark as reverted - prevents race conditions
+    // Only the first caller will succeed; subsequent calls return false
+    const didRevert = db.markAsReverted(messageId);
+    if (!didRevert) {
+        console.log(`Message ${messageId} is already reverted`);
         return;
     }
 
@@ -190,12 +213,13 @@ client.on(Events.MessageReactionAdd, async (
         }
 
         // Remove the bot's reaction from the original message
-        await reaction.users.remove(client.user!);
-        console.log(`Removed bot reaction from original message`);
+        const botUser = client.user;
+        if (botUser) {
+            await reaction.users.remove(botUser);
+            console.log(`Removed bot reaction from original message`);
+        }
 
-        // Mark message as reverted in database
-        db.markAsReverted(messageId);
-        console.log(`Marked message as reverted in database`);
+        console.log(`Message revert completed`);
 
     } catch (error) {
         console.error(`Error reverting message:`, error);
