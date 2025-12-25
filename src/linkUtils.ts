@@ -1,11 +1,12 @@
 /**
  * Reddit URL regex patterns
  * Matches reddit.com, www.reddit.com, old.reddit.com, and new.reddit.com
+ * Frozen to prevent accidental modification
  */
-export const REDDIT_PATTERNS: RegExp[] = [
+export const REDDIT_PATTERNS: readonly RegExp[] = Object.freeze([
     /https?:\/\/(www\.)?reddit\.com\/r\/[^\s]+/gi,
     /https?:\/\/(old|new)\.reddit\.com\/r\/[^\s]+/gi,
-];
+]);
 
 /**
  * Robot emoji used for reactions

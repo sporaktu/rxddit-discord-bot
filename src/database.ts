@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
 // Interface for stored message data
 export interface StoredMessage {
@@ -35,12 +36,15 @@ export class MessageDatabase {
     constructor(dbPath: string = path.join(process.cwd(), 'data', 'messages.db')) {
         // Ensure data directory exists
         const dir = path.dirname(dbPath);
-        const fs = require('fs');
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
         this.db = new Database(dbPath);
+
+        // Enable foreign key enforcement
+        this.db.pragma('foreign_keys = ON');
+
         this.initialize();
     }
 
@@ -258,24 +262,28 @@ export class MessageDatabase {
     }
 
     // Clean up old messages (older than specified days)
+    // Uses a transaction to ensure both reactions and messages are deleted atomically
     cleanupOldMessages(daysOld: number = 30): number {
         const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
 
-        // First delete related reactions
-        const deleteReactions = this.db.prepare(`
+        const deleteReactionsStmt = this.db.prepare(`
             DELETE FROM reactions WHERE message_id IN (
                 SELECT message_id FROM messages WHERE created_at < ?
             )
         `);
-        deleteReactions.run(cutoffTime);
 
-        // Then delete messages
-        const deleteMessages = this.db.prepare(`
+        const deleteMessagesStmt = this.db.prepare(`
             DELETE FROM messages WHERE created_at < ?
         `);
-        const result = deleteMessages.run(cutoffTime);
 
-        return result.changes;
+        // Use transaction to ensure atomicity - both succeed or both fail
+        const cleanup = this.db.transaction((cutoff: number) => {
+            deleteReactionsStmt.run(cutoff);
+            const result = deleteMessagesStmt.run(cutoff);
+            return result.changes;
+        });
+
+        return cleanup(cutoffTime);
     }
 
     // Get statistics
