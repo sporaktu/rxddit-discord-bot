@@ -21,7 +21,7 @@ export interface StoredMessage {
 export interface StoredReaction {
     id?: number;
     messageId: string;
-    odId: string;
+    userId: string;
     userTag: string;
     emoji: string;
     reactedAt: number;
@@ -165,7 +165,7 @@ export class MessageDatabase {
 
         const result = stmt.run(
             reaction.messageId,
-            reaction.odId,
+            reaction.userId,
             reaction.userTag,
             reaction.emoji,
             reaction.reactedAt,
@@ -181,7 +181,7 @@ export class MessageDatabase {
             SELECT
                 id,
                 message_id as messageId,
-                user_id as odId,
+                user_id as userId,
                 user_tag as userTag,
                 emoji,
                 reacted_at as reactedAt,

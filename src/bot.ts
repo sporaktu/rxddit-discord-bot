@@ -8,7 +8,8 @@ import {
     MessageReaction,
     User,
     PartialMessageReaction,
-    PartialUser
+    PartialUser,
+    Partials
 } from 'discord.js';
 import { getDatabase, closeDatabase, MessageDatabase } from './database';
 import { detectRedditLinks, convertToRxddit, convertMessageLinks, ROBOT_EMOJI } from './linkUtils';
@@ -16,13 +17,18 @@ import { detectRedditLinks, convertToRxddit, convertMessageLinks, ROBOT_EMOJI } 
 // Load environment variables
 config();
 
-// Initialize Discord client with necessary intents
+// Initialize Discord client with necessary intents and partials
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions,
+    ],
+    partials: [
+        Partials.Message,
+        Partials.Reaction,
+        Partials.User,
     ],
 });
 
@@ -153,7 +159,7 @@ client.on(Events.MessageReactionAdd, async (
     // Store the reaction in database
     db.storeReaction({
         messageId: messageId,
-        odId: user.id,
+        userId: user.id,
         userTag: user.tag || 'Unknown',
         emoji: ROBOT_EMOJI,
         reactedAt: Date.now(),

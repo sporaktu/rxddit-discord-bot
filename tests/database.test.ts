@@ -274,7 +274,7 @@ describe('MessageDatabase', () => {
         it('should store a reaction', () => {
             const id = db.storeReaction({
                 messageId: 'reactmsg',
-                odId: 'user1',
+                userId: 'user1',
                 userTag: 'User#0001',
                 emoji: '🤖',
                 reactedAt: Date.now(),
@@ -287,7 +287,7 @@ describe('MessageDatabase', () => {
         it('should store multiple reactions', () => {
             db.storeReaction({
                 messageId: 'reactmsg',
-                odId: 'user1',
+                userId: 'user1',
                 userTag: 'User#0001',
                 emoji: '🤖',
                 reactedAt: Date.now(),
@@ -296,7 +296,7 @@ describe('MessageDatabase', () => {
 
             db.storeReaction({
                 messageId: 'reactmsg',
-                odId: 'user2',
+                userId: 'user2',
                 userTag: 'User#0002',
                 emoji: '🤖',
                 reactedAt: Date.now(),
@@ -310,7 +310,7 @@ describe('MessageDatabase', () => {
         it('should mark revert reactions correctly', () => {
             db.storeReaction({
                 messageId: 'reactmsg',
-                odId: 'author',
+                userId: 'author',
                 userTag: 'Author#0001',
                 emoji: '🤖',
                 reactedAt: Date.now(),
@@ -363,7 +363,7 @@ describe('MessageDatabase', () => {
 
             db.storeReaction({
                 messageId: 'ordermsg',
-                odId: 'user3',
+                userId: 'user3',
                 userTag: 'User#0003',
                 emoji: '🤖',
                 reactedAt: time3,
@@ -372,7 +372,7 @@ describe('MessageDatabase', () => {
 
             db.storeReaction({
                 messageId: 'ordermsg',
-                odId: 'user1',
+                userId: 'user1',
                 userTag: 'User#0001',
                 emoji: '🤖',
                 reactedAt: time1,
@@ -381,7 +381,7 @@ describe('MessageDatabase', () => {
 
             db.storeReaction({
                 messageId: 'ordermsg',
-                odId: 'user2',
+                userId: 'user2',
                 userTag: 'User#0002',
                 emoji: '🤖',
                 reactedAt: time2,
@@ -389,9 +389,9 @@ describe('MessageDatabase', () => {
             });
 
             const reactions = db.getReactions('ordermsg');
-            expect(reactions[0].odId).toBe('user1');
-            expect(reactions[1].odId).toBe('user2');
-            expect(reactions[2].odId).toBe('user3');
+            expect(reactions[0].userId).toBe('user1');
+            expect(reactions[1].userId).toBe('user2');
+            expect(reactions[2].userId).toBe('user3');
         });
     });
 
@@ -560,7 +560,7 @@ describe('MessageDatabase', () => {
 
             db.storeReaction({
                 messageId: 'oldwithreact',
-                odId: 'user',
+                userId: 'user',
                 userTag: 'User#0001',
                 emoji: '🤖',
                 reactedAt: oldTime,
@@ -635,7 +635,7 @@ describe('MessageDatabase', () => {
             // Add reactions
             db.storeReaction({
                 messageId: 'statsmsg1',
-                odId: 'user1',
+                userId: 'user1',
                 userTag: 'User#0001',
                 emoji: '🤖',
                 reactedAt: Date.now(),
@@ -644,7 +644,7 @@ describe('MessageDatabase', () => {
 
             db.storeReaction({
                 messageId: 'statsmsg1',
-                odId: 'user2',
+                userId: 'user2',
                 userTag: 'User#0002',
                 emoji: '🤖',
                 reactedAt: Date.now(),

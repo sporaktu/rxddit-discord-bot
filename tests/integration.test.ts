@@ -129,7 +129,7 @@ describe('Integration Tests', () => {
             // Simulate non-author reaction (should not trigger revert)
             db.storeReaction({
                 messageId,
-                odId: 'otheruser',
+                userId: 'otheruser',
                 userTag: 'OtherUser#5678',
                 emoji: '🤖',
                 reactedAt: Date.now(),
@@ -143,7 +143,7 @@ describe('Integration Tests', () => {
             // Simulate author reaction (should trigger revert)
             db.storeReaction({
                 messageId,
-                odId: authorId,
+                userId: authorId,
                 userTag: 'Author#0001',
                 emoji: '🤖',
                 reactedAt: Date.now(),
@@ -328,7 +328,7 @@ describe('Integration Tests', () => {
 
             db.storeReaction({
                 messageId: 'oldmsg',
-                odId: 'user',
+                userId: 'user',
                 userTag: 'User#0001',
                 emoji: '🤖',
                 reactedAt: oldTime,
@@ -352,7 +352,7 @@ describe('Integration Tests', () => {
 
             db.storeReaction({
                 messageId: 'newmsg',
-                odId: 'user',
+                userId: 'user',
                 userTag: 'User#0001',
                 emoji: '🤖',
                 reactedAt: recentTime,
@@ -405,7 +405,7 @@ describe('Integration Tests', () => {
             for (let i = 1; i <= 3; i++) {
                 db.storeReaction({
                     messageId: `statmsg${i}`,
-                    odId: `user${i}`,
+                    userId: `user${i}`,
                     userTag: `User${i}#0001`,
                     emoji: '🤖',
                     reactedAt: Date.now(),
