@@ -1,63 +1,83 @@
 # Shared Task Notes - rxddit Discord Bot Kubernetes Deployment
 
-## Current Status
+## ✅ PROJECT COMPLETE
+
+All 4 PRs have been successfully merged and reviewed:
 
 **PR 1/4**: ✅ MERGED - Container Registry & Image Publishing (rxddit-discord-bot repo)
 **PR 2/4**: ✅ MERGED - Kubernetes Manifests (homelab-kubernetes repo)
-**PR 3/4**: ⏳ TODO - Deployment Automation & CI/CD
-**PR 4/4**: ⏳ TODO - Monitoring, Backup & Observability
+**PR 3/4**: ✅ MERGED - Deployment Automation & CI/CD (rxddit-discord-bot repo)
+**PR 4/4**: ✅ MERGED - Monitoring, Backup & Observability (homelab-kubernetes repo)
 
-## Next Action: PR 3/4 - Deployment Automation
+### Code Review Summary (PR 4/4)
 
-Work in the **rxddit-discord-bot** repository on branch `feat/k8s-deployment-automation`.
+PR 4/4 was reviewed and **APPROVED** with:
+- ✅ No critical or high-priority issues
+- ✅ All acceptance criteria met
+- ✅ Security contexts properly configured
+- ✅ Backup retention (7 days) implemented correctly
+- ✅ Prometheus alerts well-designed and actionable
+- ✅ Comprehensive documentation for operations
 
-### Tasks for PR 3:
+## Deployment Ready
 
-1. **Create deployment scripts** in `scripts/` directory:
-   - `deploy-to-k8s.sh` - Manual deployment script
-   - `rollback.sh` - Rollback script
+The bot infrastructure is now complete and ready for deployment. Manual setup required:
 
-2. **Extend GitHub Actions workflow**:
-   - Modify `.github/workflows/docker-build.yml` to add deployment job
-   - Create `.github/workflows/deploy.yml` for manual deployment triggers
-   - Deployment job should only run on main branch after successful build
-   - Use SHA tags instead of `latest` for deployments
+### Required Actions (One-Time Setup)
 
-3. **Update documentation**:
-   - Add Kubernetes deployment section to main README.md
-   - Document the full deployment workflow
-   - Include rollback procedures
+1. **Create Discord Bot Secret** (contains sensitive data - not in git):
+   ```bash
+   kubectl create secret generic rxddit-discord-bot-secrets \
+     --from-literal=DISCORD_TOKEN='your-bot-token' \
+     --from-literal=CLIENT_ID='your-client-id' \
+     -n ai-bots
+   ```
 
-4. **Required GitHub Secrets**:
-   - `KUBECONFIG` - Base64-encoded kubeconfig for cluster access
-   - Already exists: `GITHUB_TOKEN` (for container registry)
+2. **Deploy the manifests**:
+   ```bash
+   cd /path/to/homelab-kubernetes
+   kubectl apply -f namespaces/ai-bots/rxddit-discord-bot/pvc.yaml
+   kubectl apply -f namespaces/ai-bots/rxddit-discord-bot/backup-pvc.yaml
+   kubectl apply -f namespaces/ai-bots/rxddit-discord-bot/deployment.yaml
+   kubectl apply -f namespaces/ai-bots/rxddit-discord-bot/backup-cronjob.yaml
+   kubectl apply -f namespaces/ai-bots/rxddit-discord-bot/prometheus-alerts.yaml
+   ```
 
-### Key Requirements:
+3. **Optional: Configure GitHub Auto-Deploy** (if desired):
+   - Add `KUBECONFIG` secret to GitHub repository settings
+   - Future pushes to main will auto-deploy via GitHub Actions
+   - Currently deployment step fails due to missing KUBECONFIG (expected)
 
-- Scripts must use `set -euo pipefail`
-- All variables must be quoted: `"${VAR}"`
-- Provide defaults: `"${VAR:-default}"`
-- Deployment job must wait for rollout status verification
-- Include timeout on rollout status (120s)
-- Only deploy on push to main branch
+### Verify Deployment
 
-### Code Review Process:
+```bash
+kubectl get all -n ai-bots -l app=rxddit-discord-bot
+kubectl logs -n ai-bots -l app=rxddit-discord-bot -f
+```
 
-After completing PR 3:
-1. Run code review using `.claude/prompts/code-review.md` or homelab-kubernetes review command
-2. Fix any issues identified
-3. Only create PR once review approves
-4. Merge PR after approval
+## Architecture Summary
 
-## Important Context
+- **Container images**: `ghcr.io/sporaktu/rxddit-discord-bot`
+- **Kubernetes namespace**: `ai-bots`
+- **Deployment name**: `rxddit-discord-bot`
+- **Deployment strategy**: Singleton (replicas=1, Recreate strategy) - required for SQLite
+- **Storage**:
+  - Data PVC: `rxddit-discord-bot-data` (1Gi, local-path-fast)
+  - Backup PVC: `rxddit-discord-bot-backups` (2Gi, local-path-fast)
+- **Security**: Non-root user (UID 1001), no privilege escalation, all capabilities dropped
+- **Monitoring**: Prometheus alerts for availability, crash loops, and backup failures
+- **Backup**: Daily at 3 AM UTC, 7-day retention
 
-- Container images are at: `ghcr.io/sporaktu/rxddit-discord-bot`
-- Kubernetes namespace: `ai-bots`
-- Deployment name: `rxddit-discord-bot`
-- Bot requires singleton deployment (replicas=1, Recreate strategy) due to SQLite
-- PVC name: `rxddit-discord-bot-data`
-- Secret name: `rxddit-discord-bot-secrets`
+## Documentation
 
-## Deployment Plan Reference
+- Full deployment plan: `KUBERNETES_DEPLOYMENT_PLAN.md` (in this repo)
+- Kubernetes README: `/homelab-kubernetes/namespaces/ai-bots/rxddit-discord-bot/README.md`
+- Deployment scripts: `scripts/deploy-to-k8s.sh` and `scripts/rollback.sh`
 
-See `KUBERNETES_DEPLOYMENT_PLAN.md` for full details on all 4 PRs and acceptance criteria.
+## Next Steps for Human Developer
+
+1. Obtain Discord bot token and client ID
+2. Create the Kubernetes secret with credentials
+3. Deploy the manifests to the cluster
+4. Verify the bot is running and responding in Discord
+5. Optionally add KUBECONFIG to GitHub secrets for auto-deployment
