@@ -85,7 +85,52 @@ docker-compose logs -f bot
 docker-compose down
 ```
 
-### Option 2: Local Development
+### Option 2: Kubernetes
+
+For production deployments to Kubernetes, see the [homelab-kubernetes repository](https://github.com/sporaktu/homelab-kubernetes) for manifests and deployment instructions.
+
+**Quick deployment steps:**
+
+1. Ensure the image is built and pushed to the container registry (GitHub Actions handles this automatically on push to main)
+
+2. Create a Kubernetes secret with your Discord token:
+```bash
+kubectl create secret generic rxddit-discord-bot-secrets \
+  --from-literal=DISCORD_TOKEN='your-token-here' \
+  --from-literal=CLIENT_ID='your-client-id' \
+  -n ai-bots
+```
+
+3. Apply the Kubernetes manifests from the homelab-kubernetes repository:
+```bash
+kubectl apply -f namespaces/ai-bots/rxddit-discord-bot/pvc.yaml
+kubectl apply -f namespaces/ai-bots/rxddit-discord-bot/deployment.yaml
+```
+
+4. Verify the deployment:
+```bash
+kubectl get pods -n ai-bots -l app=rxddit-discord-bot
+kubectl logs -n ai-bots -l app=rxddit-discord-bot -f
+```
+
+**Using the deployment scripts:**
+
+```bash
+# Deploy a specific tag
+TAG=sha-abc123 ./scripts/deploy-to-k8s.sh
+
+# Rollback to previous version
+./scripts/rollback.sh
+
+# Rollback to specific revision
+./scripts/rollback.sh 3
+```
+
+**Automated Deployment:**
+
+The bot is automatically deployed to Kubernetes when code is pushed to the `main` branch. The deployment uses the SHA-tagged image to ensure reproducibility.
+
+### Option 3: Local Development
 
 1. Clone this repository:
 ```bash

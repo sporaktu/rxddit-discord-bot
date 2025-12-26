@@ -1,0 +1,54 @@
+name: Deploy to Kubernetes
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag to deploy'
+        required: false
+        default: 'latest'
+      namespace:
+        description: 'Kubernetes namespace'
+        required: false
+        default: 'ai-bots'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        env:
+          TAG: ${{ github.event.inputs.tag || 'latest' }}
+          NAMESPACE: ${{ github.event.inputs.namespace || 'ai-bots' }}
+        run: |
+          chmod +x scripts/deploy-to-k8s.sh
+          REGISTRY="${{ env.REGISTRY }}" \
+          IMAGE_NAME="${{ env.IMAGE_NAME }}" \
+          TAG="${TAG}" \
+          NAMESPACE="${NAMESPACE}" \
+          ./scripts/deploy-to-k8s.sh
+
+      - name: Verify deployment
+        env:
+          NAMESPACE: ${{ github.event.inputs.namespace || 'ai-bots' }}
+        run: |
+          kubectl get pods -n "${NAMESPACE}" -l app=rxddit-discord-bot
+          kubectl logs -n "${NAMESPACE}" -l app=rxddit-discord-bot --tail=20

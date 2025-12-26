@@ -63,3 +63,42 @@ jobs:
       - name: Output image digest
         if: github.event_name != 'pull_request'
         run: echo "Image pushed with digest ${{ steps.build.outputs.digest }}"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        env:
+          NAMESPACE: ai-bots
+          DEPLOYMENT: rxddit-discord-bot
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          kubectl set image deployment/${DEPLOYMENT} \
+            bot=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA} \
+            -n ${NAMESPACE}
+          kubectl rollout status deployment/${DEPLOYMENT} \
+            -n ${NAMESPACE} --timeout=120s
+
+      - name: Verify deployment
+        env:
+          NAMESPACE: ai-bots
+          DEPLOYMENT: rxddit-discord-bot
+        run: |
+          kubectl get pods -n ${NAMESPACE} -l app=${DEPLOYMENT}
+          kubectl logs -n ${NAMESPACE} -l app=${DEPLOYMENT} --tail=20
