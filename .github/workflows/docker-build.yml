@@ -84,14 +84,21 @@ jobs:
           chmod 600 ~/.kube/config
 
       - name: Deploy to Kubernetes
+        env:
+          NAMESPACE: ai-bots
+          DEPLOYMENT: rxddit-discord-bot
         run: |
-          kubectl set image deployment/rxddit-discord-bot \
-            bot=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} \
-            -n ai-bots
-          kubectl rollout status deployment/rxddit-discord-bot \
-            -n ai-bots --timeout=120s
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          kubectl set image deployment/${DEPLOYMENT} \
+            bot=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA} \
+            -n ${NAMESPACE}
+          kubectl rollout status deployment/${DEPLOYMENT} \
+            -n ${NAMESPACE} --timeout=120s
 
       - name: Verify deployment
+        env:
+          NAMESPACE: ai-bots
+          DEPLOYMENT: rxddit-discord-bot
         run: |
-          kubectl get pods -n ai-bots -l app=rxddit-discord-bot
-          kubectl logs -n ai-bots -l app=rxddit-discord-bot --tail=20
+          kubectl get pods -n ${NAMESPACE} -l app=${DEPLOYMENT}
+          kubectl logs -n ${NAMESPACE} -l app=${DEPLOYMENT} --tail=20
