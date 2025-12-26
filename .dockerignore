@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build output (rebuilt in container)
+dist/
+
+# Development files
+*.log
+npm-debug.log*
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files (not needed in production image)
+tests/
+*.test.ts
+*.spec.ts
+jest.config.js
+coverage/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# CI/CD
+.github/
+
+# Claude Code
+.claude/
+
+# Database (local development only)
+data/
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
