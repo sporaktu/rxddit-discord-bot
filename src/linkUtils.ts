@@ -16,9 +16,24 @@ export const REDDIT_PATTERNS: readonly RegExp[] = Object.freeze([
 export const ROBOT_EMOJI = '🤖';
 
 /**
+ * Common image file extensions
+ * Images already display properly in Discord, so we don't need to convert them
+ */
+const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i;
+
+/**
+ * Checks if a URL is an image based on file extension
+ * @param url - URL to check
+ * @returns true if URL appears to be an image
+ */
+function isImageUrl(url: string): boolean {
+    return IMAGE_EXTENSIONS.test(url);
+}
+
+/**
  * Detects Reddit links in a message
  * @param content - Message content
- * @returns Array of Reddit URLs found (deduplicated)
+ * @returns Array of Reddit URLs found (deduplicated, excluding images)
  */
 export function detectRedditLinks(content: string): string[] {
     const links: string[] = [];
@@ -30,8 +45,9 @@ export function detectRedditLinks(content: string): string[] {
             links.push(...matches);
         }
     });
-    // Remove duplicates
-    return [...new Set(links)];
+    // Remove duplicates and filter out image URLs
+    const uniqueLinks = [...new Set(links)];
+    return uniqueLinks.filter(link => !isImageUrl(link));
 }
 
 /**

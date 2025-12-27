@@ -92,24 +92,43 @@ describe('Reddit Link Detection', () => {
                 expect(links).toContain('https://v.redd.it/o56al2p8gr9g1');
             });
 
-            it('should detect i.redd.it image URLs', () => {
+            it('should NOT detect image URLs (already work in Discord)', () => {
                 const content = 'Image: https://i.redd.it/abc123xyz456.jpg';
                 const links = detectRedditLinks(content);
-                expect(links).toContain('https://i.redd.it/abc123xyz456.jpg');
+                expect(links).toEqual([]);
             });
 
-            it('should detect preview.redd.it URLs', () => {
-                const content = 'Preview: https://preview.redd.it/something.png';
+            it('should NOT detect preview.redd.it image URLs', () => {
+                const content = 'Preview: https://preview.redd.it/hv1bjncotl9g1.jpeg';
                 const links = detectRedditLinks(content);
-                expect(links).toContain('https://preview.redd.it/something.png');
+                expect(links).toEqual([]);
             });
 
-            it('should detect mix of redd.it and reddit.com URLs', () => {
+            it('should filter out various image extensions', () => {
+                const content = 'https://i.redd.it/test.png https://preview.redd.it/test.gif https://i.redd.it/test.webp';
+                const links = detectRedditLinks(content);
+                expect(links).toEqual([]);
+            });
+
+            it('should detect video but filter image from same message', () => {
+                const content = 'Video: https://v.redd.it/abc123 Image: https://i.redd.it/image.jpg';
+                const links = detectRedditLinks(content);
+                expect(links.length).toBe(1);
+                expect(links).toContain('https://v.redd.it/abc123');
+            });
+
+            it('should detect mix of reddit.com and video URLs (no images)', () => {
                 const content = 'Post: https://reddit.com/r/memes and video https://v.redd.it/abc123';
                 const links = detectRedditLinks(content);
                 expect(links.length).toBe(2);
                 expect(links).toContain('https://reddit.com/r/memes');
                 expect(links).toContain('https://v.redd.it/abc123');
+            });
+
+            it('should handle image URLs with query parameters', () => {
+                const content = 'https://preview.redd.it/image.jpg?width=640&format=pjpg';
+                const links = detectRedditLinks(content);
+                expect(links).toEqual([]);
             });
         });
 
