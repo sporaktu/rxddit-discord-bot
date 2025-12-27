@@ -85,6 +85,34 @@ describe('Reddit Link Detection', () => {
             });
         });
 
+        describe('Reddit media domains', () => {
+            it('should detect v.redd.it video URLs', () => {
+                const content = 'Watch this https://v.redd.it/o56al2p8gr9g1';
+                const links = detectRedditLinks(content);
+                expect(links).toContain('https://v.redd.it/o56al2p8gr9g1');
+            });
+
+            it('should detect i.redd.it image URLs', () => {
+                const content = 'Image: https://i.redd.it/abc123xyz456.jpg';
+                const links = detectRedditLinks(content);
+                expect(links).toContain('https://i.redd.it/abc123xyz456.jpg');
+            });
+
+            it('should detect preview.redd.it URLs', () => {
+                const content = 'Preview: https://preview.redd.it/something.png';
+                const links = detectRedditLinks(content);
+                expect(links).toContain('https://preview.redd.it/something.png');
+            });
+
+            it('should detect mix of redd.it and reddit.com URLs', () => {
+                const content = 'Post: https://reddit.com/r/memes and video https://v.redd.it/abc123';
+                const links = detectRedditLinks(content);
+                expect(links.length).toBe(2);
+                expect(links).toContain('https://reddit.com/r/memes');
+                expect(links).toContain('https://v.redd.it/abc123');
+            });
+        });
+
         describe('edge cases', () => {
             it('should return empty array for messages without Reddit links', () => {
                 const content = 'Just a normal message without any links';
@@ -223,6 +251,32 @@ describe('Reddit Link Detection', () => {
                 expect(converted).toBe('https://rxddit.com/r/AskReddit');
             });
         });
+
+        describe('Reddit media domains', () => {
+            it('should convert v.redd.it to rxddit.com', () => {
+                const url = 'https://v.redd.it/o56al2p8gr9g1';
+                const converted = convertToRxddit(url);
+                expect(converted).toBe('https://rxddit.com/o56al2p8gr9g1');
+            });
+
+            it('should convert i.redd.it to rxddit.com', () => {
+                const url = 'https://i.redd.it/abc123xyz456.jpg';
+                const converted = convertToRxddit(url);
+                expect(converted).toBe('https://rxddit.com/abc123xyz456.jpg');
+            });
+
+            it('should convert preview.redd.it to rxddit.com', () => {
+                const url = 'https://preview.redd.it/something.png';
+                const converted = convertToRxddit(url);
+                expect(converted).toBe('https://rxddit.com/something.png');
+            });
+
+            it('should handle http protocol for redd.it domains', () => {
+                const url = 'http://v.redd.it/abc123';
+                const converted = convertToRxddit(url);
+                expect(converted).toBe('https://rxddit.com/abc123');
+            });
+        });
     });
 
     describe('convertMessageLinks', () => {
@@ -322,7 +376,7 @@ describe('Reddit Link Detection', () => {
 
     describe('REDDIT_PATTERNS', () => {
         it('should have correct number of patterns', () => {
-            expect(REDDIT_PATTERNS.length).toBe(2);
+            expect(REDDIT_PATTERNS.length).toBe(3);
         });
 
         it('should all be global regex patterns', () => {
