@@ -1,11 +1,13 @@
 /**
  * Reddit URL regex patterns
- * Matches reddit.com, www.reddit.com, old.reddit.com, and new.reddit.com
+ * Matches reddit.com, www.reddit.com, old.reddit.com, new.reddit.com,
+ * and Reddit media domains (v.redd.it, i.redd.it, preview.redd.it)
  * Frozen to prevent accidental modification
  */
 export const REDDIT_PATTERNS: readonly RegExp[] = Object.freeze([
     /https?:\/\/(www\.)?reddit\.com\/r\/[^\s]+/gi,
     /https?:\/\/(old|new)\.reddit\.com\/r\/[^\s]+/gi,
+    /https?:\/\/(v|i|preview)\.redd\.it\/[^\s]+/gi,
 ]);
 
 /**
@@ -40,7 +42,8 @@ export function detectRedditLinks(content: string): string[] {
 export function convertToRxddit(url: string): string {
     return url
         .replace(/https?:\/\/(www\.)?reddit\.com/gi, 'https://rxddit.com')
-        .replace(/https?:\/\/(old|new)\.reddit\.com/gi, 'https://rxddit.com');
+        .replace(/https?:\/\/(old|new)\.reddit\.com/gi, 'https://rxddit.com')
+        .replace(/https?:\/\/(v|i|preview)\.redd\.it/gi, 'https://rxddit.com');
 }
 
 /**

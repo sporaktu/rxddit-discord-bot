@@ -129,12 +129,17 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 createdAt: Date.now()
             });
 
-            // React to the original message with robot emoji
-            if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.AddReactions)) {
-                await message.react(ROBOT_EMOJI);
-                console.log(`Converted and reacted to message from ${message.author.tag}`);
+            // Delete the original message if bot has permission
+            if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.ManageMessages)) {
+                await message.delete();
+                console.log(`Deleted original message and posted converted links from ${message.author.tag}`);
             } else {
-                console.log(`No permission to add reactions`);
+                console.log(`No permission to delete messages - reacting instead`);
+                // Fall back to reacting if can't delete
+                if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.AddReactions)) {
+                    await message.react(ROBOT_EMOJI);
+                    console.log(`Converted and reacted to message from ${message.author.tag}`);
+                }
             }
 
         } catch (error) {
