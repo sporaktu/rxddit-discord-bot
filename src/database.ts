@@ -87,6 +87,7 @@ export class MessageDatabase {
             CREATE INDEX IF NOT EXISTS idx_messages_author ON messages(author_id);
             CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
+            CREATE INDEX IF NOT EXISTS idx_messages_bot_message ON messages(bot_message_id);
             CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions(message_id);
             CREATE INDEX IF NOT EXISTS idx_reactions_user ON reactions(user_id);
         `);
@@ -117,7 +118,7 @@ export class MessageDatabase {
         );
     }
 
-    // Get a stored message by ID
+    // Get a stored message by original message ID
     getMessage(messageId: string): StoredMessage | null {
         const stmt = this.db.prepare(`
             SELECT
@@ -137,6 +138,32 @@ export class MessageDatabase {
         `);
 
         const result = stmt.get(messageId) as StoredMessage | undefined;
+        if (result) {
+            result.isReverted = Boolean(result.isReverted);
+        }
+        return result || null;
+    }
+
+    // Get a stored message by bot message ID (for reaction handling)
+    getMessageByBotMessageId(botMessageId: string): StoredMessage | null {
+        const stmt = this.db.prepare(`
+            SELECT
+                message_id as messageId,
+                channel_id as channelId,
+                guild_id as guildId,
+                author_id as authorId,
+                author_tag as authorTag,
+                original_content as originalContent,
+                converted_content as convertedContent,
+                original_links as originalLinks,
+                converted_links as convertedLinks,
+                bot_message_id as botMessageId,
+                created_at as createdAt,
+                is_reverted as isReverted
+            FROM messages WHERE bot_message_id = ?
+        `);
+
+        const result = stmt.get(botMessageId) as StoredMessage | undefined;
         if (result) {
             result.isReverted = Boolean(result.isReverted);
         }

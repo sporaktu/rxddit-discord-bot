@@ -109,9 +109,9 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 return;
             }
 
-            // Send the converted message (use username to avoid pinging the user)
+            // Send only the converted rxddit links (not full message content)
             const botMessage = await message.channel.send(
-                `*${message.author.username} posted:*\n${convertedContent}`
+                convertedLinks.join('\n')
             );
 
             // Store message info in database
@@ -137,14 +137,14 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 console.log(`No permission to manage messages - cannot suppress embeds`);
             }
 
-            // Always react to indicate the message was processed and enable revert functionality.
-            // Even if embeds couldn't be suppressed, revert still allows deleting the bot's message.
+            // React on the bot's message to enable revert functionality.
+            // User can react with robot emoji to delete the bot's message and unsuppress original embeds.
             if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.AddReactions)) {
-                await message.react(ROBOT_EMOJI);
+                await botMessage.react(ROBOT_EMOJI);
             }
 
         } catch (error) {
-            console.error(`Error processing message:`, error);
+            console.error(`Error processing message ${message.id} from ${message.author.tag} in channel ${message.channel.id}:`, error);
         }
     }
 });
@@ -162,7 +162,7 @@ client.on(Events.MessageReactionAdd, async (
         try {
             await reaction.fetch();
         } catch (error) {
-            console.error(`Error fetching reaction:`, error);
+            console.error(`Error fetching reaction on message ${reaction.message.id} from user ${user.id}:`, error);
             return;
         }
     }
@@ -170,16 +170,17 @@ client.on(Events.MessageReactionAdd, async (
     // Check if the reaction is the robot emoji
     if (reaction.emoji.name !== ROBOT_EMOJI) return;
 
-    const messageId = reaction.message.id;
-    const storedMessage = db.getMessage(messageId);
+    // Reaction is on the bot's message, look up by bot message ID
+    const botMessageId = reaction.message.id;
+    const storedMessage = db.getMessageByBotMessageId(botMessageId);
 
-    // Check if we have stored info for this message
+    // Check if we have stored info for this bot message
     if (!storedMessage) return;
 
     // Store the reaction in database (before checking if it's a revert)
     const isAuthorReaction = user.id === storedMessage.authorId;
     db.storeReaction({
-        messageId: messageId,
+        messageId: storedMessage.messageId,
         userId: user.id,
         userTag: user.tag || 'Unknown',
         emoji: ROBOT_EMOJI,
@@ -195,30 +196,26 @@ client.on(Events.MessageReactionAdd, async (
 
     // Atomically try to mark as reverted - prevents race conditions
     // Only the first caller will succeed; subsequent calls return false
-    const didRevert = db.markAsReverted(messageId);
+    const didRevert = db.markAsReverted(storedMessage.messageId);
     if (!didRevert) {
-        console.log(`Message ${messageId} is already reverted`);
+        console.log(`Message ${storedMessage.messageId} is already reverted`);
         return;
     }
 
     console.log(`Original author ${user.tag} reacted to revert the message`);
 
     try {
-        // Get the channel to access messages
+        // Delete the bot's message (the one being reacted to)
+        try {
+            await reaction.message.delete();
+            console.log(`Deleted bot message`);
+        } catch (deleteError) {
+            console.log(`Bot message already deleted or not found`);
+        }
+
+        // Unsuppress embeds on the original message
         const channel = await client.channels.fetch(storedMessage.channelId);
         if (channel?.isTextBased()) {
-            // Delete the bot's converted message
-            try {
-                const botMessage = await channel.messages.fetch(storedMessage.botMessageId);
-                if (botMessage) {
-                    await botMessage.delete();
-                    console.log(`Deleted converted message`);
-                }
-            } catch (fetchError) {
-                console.log(`Bot message already deleted or not found`);
-            }
-
-            // Unsuppress embeds on the original message
             try {
                 const originalMessage = await channel.messages.fetch(storedMessage.messageId);
                 if (originalMessage) {
@@ -230,17 +227,10 @@ client.on(Events.MessageReactionAdd, async (
             }
         }
 
-        // Remove the bot's reaction from the original message
-        const botUser = client.user;
-        if (botUser) {
-            await reaction.users.remove(botUser);
-            console.log(`Removed bot reaction from original message`);
-        }
-
         console.log(`Message revert completed`);
 
     } catch (error) {
-        console.error(`Error reverting message:`, error);
+        console.error(`Error reverting message ${storedMessage.messageId} (bot message ${storedMessage.botMessageId}) for user ${user.tag}:`, error);
     }
 });
 
