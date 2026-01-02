@@ -129,17 +129,18 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 createdAt: Date.now()
             });
 
-            // Delete the original message if bot has permission
+            // Suppress embeds on the original message if bot has permission
             if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.ManageMessages)) {
-                await message.delete();
-                console.log(`Deleted original message and posted converted links from ${message.author.tag}`);
+                await message.suppressEmbeds(true);
+                console.log(`Suppressed embeds and posted converted links from ${message.author.tag}`);
             } else {
-                console.log(`No permission to delete messages - reacting instead`);
-                // Fall back to reacting if can't delete
-                if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.AddReactions)) {
-                    await message.react(ROBOT_EMOJI);
-                    console.log(`Converted and reacted to message from ${message.author.tag}`);
-                }
+                console.log(`No permission to manage messages - cannot suppress embeds`);
+            }
+
+            // Always react to indicate the message was processed and enable revert functionality.
+            // Even if embeds couldn't be suppressed, revert still allows deleting the bot's message.
+            if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.AddReactions)) {
+                await message.react(ROBOT_EMOJI);
             }
 
         } catch (error) {
@@ -203,9 +204,10 @@ client.on(Events.MessageReactionAdd, async (
     console.log(`Original author ${user.tag} reacted to revert the message`);
 
     try {
-        // Get the bot's message and delete it
+        // Get the channel to access messages
         const channel = await client.channels.fetch(storedMessage.channelId);
         if (channel?.isTextBased()) {
+            // Delete the bot's converted message
             try {
                 const botMessage = await channel.messages.fetch(storedMessage.botMessageId);
                 if (botMessage) {
@@ -214,6 +216,17 @@ client.on(Events.MessageReactionAdd, async (
                 }
             } catch (fetchError) {
                 console.log(`Bot message already deleted or not found`);
+            }
+
+            // Unsuppress embeds on the original message
+            try {
+                const originalMessage = await channel.messages.fetch(storedMessage.messageId);
+                if (originalMessage) {
+                    await originalMessage.suppressEmbeds(false);
+                    console.log(`Unsuppressed embeds on original message`);
+                }
+            } catch (fetchError) {
+                console.log(`Could not unsuppress embeds on original message - may have been deleted or bot lacks permissions`);
             }
         }
 
