@@ -144,7 +144,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
             }
 
         } catch (error) {
-            console.error(`Error processing message:`, error);
+            console.error(`Error processing message ${message.id} from ${message.author.tag} in channel ${message.channel.id}:`, error);
         }
     }
 });
@@ -162,7 +162,7 @@ client.on(Events.MessageReactionAdd, async (
         try {
             await reaction.fetch();
         } catch (error) {
-            console.error(`Error fetching reaction:`, error);
+            console.error(`Error fetching reaction on message ${reaction.message.id} from user ${user.id}:`, error);
             return;
         }
     }
@@ -230,7 +230,7 @@ client.on(Events.MessageReactionAdd, async (
         console.log(`Message revert completed`);
 
     } catch (error) {
-        console.error(`Error reverting message:`, error);
+        console.error(`Error reverting message ${storedMessage.messageId} (bot message ${storedMessage.botMessageId}) for user ${user.tag}:`, error);
     }
 });
 

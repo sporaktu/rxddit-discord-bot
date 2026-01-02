@@ -87,6 +87,7 @@ export class MessageDatabase {
             CREATE INDEX IF NOT EXISTS idx_messages_author ON messages(author_id);
             CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
             CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
+            CREATE INDEX IF NOT EXISTS idx_messages_bot_message ON messages(bot_message_id);
             CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions(message_id);
             CREATE INDEX IF NOT EXISTS idx_reactions_user ON reactions(user_id);
         `);
