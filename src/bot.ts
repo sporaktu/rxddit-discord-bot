@@ -109,9 +109,9 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 return;
             }
 
-            // Send the converted message
+            // Send the converted message (use username to avoid pinging the user)
             const botMessage = await message.channel.send(
-                `*${message.author} posted:*\n${convertedContent}`
+                `*${message.author.username} posted:*\n${convertedContent}`
             );
 
             // Store message info in database
