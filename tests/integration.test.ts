@@ -41,11 +41,11 @@ describe('Integration Tests', () => {
 
             // Step 2: Convert the message
             const convertedContent = convertMessageLinks(messageContent);
-            expect(convertedContent).toBe('Check out this post: https://rxddit.com/r/programming/comments/abc123/great_post');
+            expect(convertedContent).toBe('Check out this post: https://redditez.com/r/programming/comments/abc123/great_post');
 
             // Step 3: Convert individual links for storage
             const convertedLinks = detectedLinks.map(link => convertToRxddit(link));
-            expect(convertedLinks[0]).toBe('https://rxddit.com/r/programming/comments/abc123/great_post');
+            expect(convertedLinks[0]).toBe('https://redditez.com/r/programming/comments/abc123/great_post');
 
             // Step 4: Store in database
             db.storeMessage({
@@ -82,7 +82,7 @@ describe('Integration Tests', () => {
 
             // Convert message
             const convertedContent = convertMessageLinks(messageContent);
-            expect(convertedContent).toBe('Check https://rxddit.com/r/one and https://rxddit.com/r/two and https://rxddit.com/r/three');
+            expect(convertedContent).toBe('Check https://redditez.com/r/one and https://redditez.com/r/two and https://redditez.com/r/three');
 
             // Store and verify
             const convertedLinks = detectedLinks.map(link => convertToRxddit(link));
@@ -119,9 +119,9 @@ describe('Integration Tests', () => {
                 authorId,
                 authorTag: 'Author#0001',
                 originalContent: 'https://reddit.com/r/test',
-                convertedContent: 'https://rxddit.com/r/test',
+                convertedContent: 'https://redditez.com/r/test',
                 originalLinks: JSON.stringify(['https://reddit.com/r/test']),
-                convertedLinks: JSON.stringify(['https://rxddit.com/r/test']),
+                convertedLinks: JSON.stringify(['https://redditez.com/r/test']),
                 botMessageId: 'bot',
                 createdAt: Date.now()
             });
@@ -174,7 +174,7 @@ describe('Integration Tests', () => {
                 authorId: 'author',
                 authorTag: 'Author#0001',
                 originalContent: 'https://reddit.com/r/test',
-                convertedContent: 'https://rxddit.com/r/test',
+                convertedContent: 'https://redditez.com/r/test',
                 originalLinks: '[]',
                 convertedLinks: '[]',
                 botMessageId: 'bot',
@@ -288,7 +288,7 @@ describe('Integration Tests', () => {
             expect(detectedLinks.length).toBe(1);
 
             const converted = convertToRxddit(detectedLinks[0]);
-            expect(converted).toContain('rxddit.com');
+            expect(converted).toContain('redditez.com');
             expect(converted).toContain(longPath);
         });
 

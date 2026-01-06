@@ -51,19 +51,19 @@ export function detectRedditLinks(content: string): string[] {
 }
 
 /**
- * Converts a Reddit URL to rxddit URL
+ * Converts a Reddit URL to redditez URL
  * @param url - Original Reddit URL
- * @returns Converted rxddit URL
+ * @returns Converted redditez URL
  */
 export function convertToRxddit(url: string): string {
     return url
-        .replace(/https?:\/\/(www\.)?reddit\.com/gi, 'https://rxddit.com')
-        .replace(/https?:\/\/(old|new)\.reddit\.com/gi, 'https://rxddit.com')
-        .replace(/https?:\/\/(v|i|preview)\.redd\.it/gi, 'https://rxddit.com');
+        .replace(/https?:\/\/(www\.)?reddit\.com/gi, 'https://redditez.com')
+        .replace(/https?:\/\/(old|new)\.reddit\.com/gi, 'https://redditez.com')
+        .replace(/https?:\/\/(v|i|preview)\.redd\.it/gi, 'https://redditez.com');
 }
 
 /**
- * Converts all Reddit links in a message to rxddit links
+ * Converts all Reddit links in a message to redditez links
  * @param content - Original message content
  * @returns Content with converted links
  */

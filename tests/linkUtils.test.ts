@@ -198,28 +198,28 @@ describe('Reddit Link Detection', () => {
 
     describe('convertToRxddit', () => {
         describe('basic conversions', () => {
-            it('should convert reddit.com to rxddit.com', () => {
+            it('should convert reddit.com to redditez.com', () => {
                 const url = 'https://reddit.com/r/test';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test');
+                expect(converted).toBe('https://redditez.com/r/test');
             });
 
-            it('should convert www.reddit.com to rxddit.com', () => {
+            it('should convert www.reddit.com to redditez.com', () => {
                 const url = 'https://www.reddit.com/r/test';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test');
+                expect(converted).toBe('https://redditez.com/r/test');
             });
 
-            it('should convert old.reddit.com to rxddit.com', () => {
+            it('should convert old.reddit.com to redditez.com', () => {
                 const url = 'https://old.reddit.com/r/test';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test');
+                expect(converted).toBe('https://redditez.com/r/test');
             });
 
-            it('should convert new.reddit.com to rxddit.com', () => {
+            it('should convert new.reddit.com to redditez.com', () => {
                 const url = 'https://new.reddit.com/r/test';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test');
+                expect(converted).toBe('https://redditez.com/r/test');
             });
         });
 
@@ -227,13 +227,13 @@ describe('Reddit Link Detection', () => {
             it('should convert http to https', () => {
                 const url = 'http://reddit.com/r/test';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test');
+                expect(converted).toBe('https://redditez.com/r/test');
             });
 
             it('should convert http://www. to https', () => {
                 const url = 'http://www.reddit.com/r/test';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test');
+                expect(converted).toBe('https://redditez.com/r/test');
             });
         });
 
@@ -241,19 +241,19 @@ describe('Reddit Link Detection', () => {
             it('should preserve full post path', () => {
                 const url = 'https://reddit.com/r/programming/comments/abc123/some_title';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/programming/comments/abc123/some_title');
+                expect(converted).toBe('https://redditez.com/r/programming/comments/abc123/some_title');
             });
 
             it('should preserve query parameters', () => {
                 const url = 'https://reddit.com/r/test?sort=new';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test?sort=new');
+                expect(converted).toBe('https://redditez.com/r/test?sort=new');
             });
 
             it('should preserve comment permalinks', () => {
                 const url = 'https://www.reddit.com/r/sub/comments/id/title/comment_id/';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/sub/comments/id/title/comment_id/');
+                expect(converted).toBe('https://redditez.com/r/sub/comments/id/title/comment_id/');
             });
         });
 
@@ -261,39 +261,39 @@ describe('Reddit Link Detection', () => {
             it('should handle uppercase domain', () => {
                 const url = 'https://REDDIT.COM/r/test';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/test');
+                expect(converted).toBe('https://redditez.com/r/test');
             });
 
             it('should preserve case in subreddit name', () => {
                 const url = 'https://reddit.com/r/AskReddit';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/r/AskReddit');
+                expect(converted).toBe('https://redditez.com/r/AskReddit');
             });
         });
 
         describe('Reddit media domains', () => {
-            it('should convert v.redd.it to rxddit.com', () => {
+            it('should convert v.redd.it to redditez.com', () => {
                 const url = 'https://v.redd.it/o56al2p8gr9g1';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/o56al2p8gr9g1');
+                expect(converted).toBe('https://redditez.com/o56al2p8gr9g1');
             });
 
-            it('should convert i.redd.it to rxddit.com', () => {
+            it('should convert i.redd.it to redditez.com', () => {
                 const url = 'https://i.redd.it/abc123xyz456.jpg';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/abc123xyz456.jpg');
+                expect(converted).toBe('https://redditez.com/abc123xyz456.jpg');
             });
 
-            it('should convert preview.redd.it to rxddit.com', () => {
+            it('should convert preview.redd.it to redditez.com', () => {
                 const url = 'https://preview.redd.it/something.png';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/something.png');
+                expect(converted).toBe('https://redditez.com/something.png');
             });
 
             it('should handle http protocol for redd.it domains', () => {
                 const url = 'http://v.redd.it/abc123';
                 const converted = convertToRxddit(url);
-                expect(converted).toBe('https://rxddit.com/abc123');
+                expect(converted).toBe('https://redditez.com/abc123');
             });
         });
     });
@@ -303,13 +303,13 @@ describe('Reddit Link Detection', () => {
             it('should convert a single Reddit link in message', () => {
                 const content = 'Check out https://reddit.com/r/test';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('Check out https://rxddit.com/r/test');
+                expect(converted).toBe('Check out https://redditez.com/r/test');
             });
 
             it('should preserve text around the link', () => {
                 const content = 'Before https://reddit.com/r/test after';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('Before https://rxddit.com/r/test after');
+                expect(converted).toBe('Before https://redditez.com/r/test after');
             });
         });
 
@@ -317,19 +317,19 @@ describe('Reddit Link Detection', () => {
             it('should convert multiple Reddit links', () => {
                 const content = 'Links: https://reddit.com/r/one and https://reddit.com/r/two';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('Links: https://rxddit.com/r/one and https://rxddit.com/r/two');
+                expect(converted).toBe('Links: https://redditez.com/r/one and https://redditez.com/r/two');
             });
 
             it('should convert mix of different Reddit domains', () => {
                 const content = 'Old: https://old.reddit.com/r/test New: https://new.reddit.com/r/test2';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('Old: https://rxddit.com/r/test New: https://rxddit.com/r/test2');
+                expect(converted).toBe('Old: https://redditez.com/r/test New: https://redditez.com/r/test2');
             });
 
             it('should convert www and non-www URLs', () => {
                 const content = 'Links: https://reddit.com/r/a https://www.reddit.com/r/b';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('Links: https://rxddit.com/r/a https://rxddit.com/r/b');
+                expect(converted).toBe('Links: https://redditez.com/r/a https://redditez.com/r/b');
             });
         });
 
@@ -337,25 +337,25 @@ describe('Reddit Link Detection', () => {
             it('should not modify non-Reddit URLs', () => {
                 const content = 'Check out https://google.com and https://reddit.com/r/test';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('Check out https://google.com and https://rxddit.com/r/test');
+                expect(converted).toBe('Check out https://google.com and https://redditez.com/r/test');
             });
 
             it('should preserve emoji in message', () => {
                 const content = '🎉 Check out https://reddit.com/r/test 🎊';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('🎉 Check out https://rxddit.com/r/test 🎊');
+                expect(converted).toBe('🎉 Check out https://redditez.com/r/test 🎊');
             });
 
             it('should preserve newlines in message', () => {
                 const content = 'First line\nhttps://reddit.com/r/test\nLast line';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('First line\nhttps://rxddit.com/r/test\nLast line');
+                expect(converted).toBe('First line\nhttps://redditez.com/r/test\nLast line');
             });
 
             it('should preserve markdown formatting', () => {
                 const content = '**Bold** text with [link](https://reddit.com/r/test)';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('**Bold** text with [link](https://rxddit.com/r/test)');
+                expect(converted).toBe('**Bold** text with [link](https://redditez.com/r/test)');
             });
 
             it('should handle message with no Reddit links', () => {
@@ -375,20 +375,21 @@ describe('Reddit Link Detection', () => {
                 const longText = 'a'.repeat(1000);
                 const content = `${longText} https://reddit.com/r/test ${longText}`;
                 const converted = convertMessageLinks(content);
-                expect(converted).toContain('https://rxddit.com/r/test');
-                expect(converted.length).toBe(content.length);
+                expect(converted).toContain('https://redditez.com/r/test');
+                // redditez.com is 2 chars longer than reddit.com, so length increases by 2
+                expect(converted.length).toBe(content.length + 2);
             });
 
             it('should handle multiple URLs on same line', () => {
                 const content = 'https://reddit.com/r/a https://reddit.com/r/b https://reddit.com/r/c';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('https://rxddit.com/r/a https://rxddit.com/r/b https://rxddit.com/r/c');
+                expect(converted).toBe('https://redditez.com/r/a https://redditez.com/r/b https://redditez.com/r/c');
             });
 
             it('should handle duplicate URLs', () => {
                 const content = 'Same: https://reddit.com/r/test and https://reddit.com/r/test';
                 const converted = convertMessageLinks(content);
-                expect(converted).toBe('Same: https://rxddit.com/r/test and https://rxddit.com/r/test');
+                expect(converted).toBe('Same: https://redditez.com/r/test and https://redditez.com/r/test');
             });
         });
     });
