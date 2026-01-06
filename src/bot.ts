@@ -72,8 +72,8 @@ function hasVideoOrGallery(embeds: Embed[]): boolean {
         }
 
         // Check for gallery/rich content from Reddit (galleries are typically 'rich' type)
-        // rxddit embeds galleries as rich content with multiple items
-        if (embed.data.type === 'rich' && embed.provider?.name?.toLowerCase().includes('rxddit')) {
+        // redditez embeds galleries as rich content with multiple items
+        if (embed.data.type === 'rich' && embed.provider?.name?.toLowerCase().includes('redditez')) {
             return true;
         }
 
