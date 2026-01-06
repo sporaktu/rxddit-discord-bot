@@ -55,9 +55,9 @@ describe('MessageDatabase', () => {
             authorId: 'user001',
             authorTag: 'TestUser#1234',
             originalContent: 'Check out https://reddit.com/r/test',
-            convertedContent: 'Check out https://rxddit.com/r/test',
+            convertedContent: 'Check out https://redditez.com/r/test',
             originalLinks: JSON.stringify(['https://reddit.com/r/test']),
-            convertedLinks: JSON.stringify(['https://rxddit.com/r/test']),
+            convertedLinks: JSON.stringify(['https://redditez.com/r/test']),
             botMessageId: 'botmsg999',
             createdAt: Date.now()
         };
