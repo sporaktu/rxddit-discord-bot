@@ -1,4 +1,4 @@
-import { detectRedditLinks, convertToRxddit, convertMessageLinks, isDirectVideoLink, REDDIT_PATTERNS } from '../src/linkUtils';
+import { detectRedditLinks, convertToRxddit, convertMessageLinks, isDirectVideoLink, resolveVRedditUrl, REDDIT_PATTERNS } from '../src/linkUtils';
 
 describe('Reddit Link Detection', () => {
     describe('detectRedditLinks', () => {
@@ -465,6 +465,102 @@ describe('Reddit Link Detection', () => {
 
             it('should not match partial v.redd.it domains', () => {
                 expect(isDirectVideoLink('https://notv.redd.it/abc')).toBe(false);
+            });
+        });
+    });
+
+    describe('resolveVRedditUrl', () => {
+        // Save original fetch
+        const originalFetch = global.fetch;
+
+        afterEach(() => {
+            // Restore original fetch after each test
+            global.fetch = originalFetch;
+        });
+
+        describe('non-v.redd.it URLs', () => {
+            it('should return original URL for reddit.com URLs', async () => {
+                const url = 'https://reddit.com/r/test/comments/abc123';
+                const result = await resolveVRedditUrl(url);
+                expect(result).toBe(url);
+            });
+
+            it('should return original URL for other URLs', async () => {
+                const url = 'https://youtube.com/watch?v=abc123';
+                const result = await resolveVRedditUrl(url);
+                expect(result).toBe(url);
+            });
+        });
+
+        describe('v.redd.it URLs with successful fetch', () => {
+            it('should resolve v.redd.it to reddit.com/video URL', async () => {
+                global.fetch = jest.fn().mockResolvedValue({
+                    url: 'https://www.reddit.com/video/8iudhwqogrcg1'
+                });
+
+                const result = await resolveVRedditUrl('https://v.redd.it/8iudhwqogrcg1');
+                expect(result).toBe('https://www.reddit.com/video/8iudhwqogrcg1');
+            });
+
+            it('should handle redirects to full post URLs', async () => {
+                global.fetch = jest.fn().mockResolvedValue({
+                    url: 'https://www.reddit.com/r/funny/comments/abc123/title'
+                });
+
+                const result = await resolveVRedditUrl('https://v.redd.it/abc123');
+                expect(result).toBe('https://www.reddit.com/r/funny/comments/abc123/title');
+            });
+        });
+
+        describe('v.redd.it URLs with fetch failure', () => {
+            it('should fallback to constructed URL when fetch fails', async () => {
+                global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+                const result = await resolveVRedditUrl('https://v.redd.it/8iudhwqogrcg1');
+                expect(result).toBe('https://www.reddit.com/video/8iudhwqogrcg1');
+            });
+
+            it('should strip query params when constructing fallback URL', async () => {
+                global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+                const result = await resolveVRedditUrl('https://v.redd.it/abc123?source=share');
+                expect(result).toBe('https://www.reddit.com/video/abc123');
+            });
+
+            it('should strip hash when constructing fallback URL', async () => {
+                global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+                const result = await resolveVRedditUrl('https://v.redd.it/abc123#section');
+                expect(result).toBe('https://www.reddit.com/video/abc123');
+            });
+        });
+
+        describe('v.redd.it URLs with non-reddit redirect', () => {
+            it('should fallback to constructed URL when redirect is not to reddit.com', async () => {
+                global.fetch = jest.fn().mockResolvedValue({
+                    url: 'https://example.com/some/other/url'
+                });
+
+                const result = await resolveVRedditUrl('https://v.redd.it/abc123');
+                expect(result).toBe('https://www.reddit.com/video/abc123');
+            });
+        });
+
+        describe('edge cases', () => {
+            it('should handle http v.redd.it URLs', async () => {
+                global.fetch = jest.fn().mockResolvedValue({
+                    url: 'https://www.reddit.com/video/abc123'
+                });
+
+                const result = await resolveVRedditUrl('http://v.redd.it/abc123');
+                expect(result).toBe('https://www.reddit.com/video/abc123');
+            });
+
+            it('should handle uppercase V.REDD.IT URLs', async () => {
+                global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+                const result = await resolveVRedditUrl('https://V.REDD.IT/ABC123');
+                expect(result).toBe('https://www.reddit.com/video/ABC123');
             });
         });
     });

@@ -13,7 +13,7 @@ import {
     Embed
 } from 'discord.js';
 import { getDatabase, closeDatabase, MessageDatabase } from './database';
-import { detectRedditLinks, convertToRxddit, convertMessageLinks, isDirectVideoLink, ROBOT_EMOJI } from './linkUtils';
+import { detectRedditLinks, convertToRxddit, isDirectVideoLink, resolveVRedditUrl, ROBOT_EMOJI } from './linkUtils';
 
 // Load environment variables
 config();
@@ -110,9 +110,15 @@ client.on(Events.MessageCreate, async (message: Message) => {
         console.log(`Found ${redditLinks.length} Reddit link(s) in message from ${message.author.tag}`);
 
         try {
-            // Convert Reddit links to rxddit links
-            const convertedContent = convertMessageLinks(message.content);
-            const convertedLinks = redditLinks.map(link => convertToRxddit(link));
+            // Resolve v.redd.it URLs to their reddit.com equivalents first
+            // v.redd.it links redirect to reddit.com/video/{id} which embeds properly
+            const resolvedLinks = await Promise.all(
+                redditLinks.map(link => resolveVRedditUrl(link))
+            );
+
+            // Convert resolved Reddit links to rxddit links
+            const convertedLinks = resolvedLinks.map(link => convertToRxddit(link));
+            const convertedContent = convertedLinks.join('\n');
 
             // Check if message is from a guild (not DM)
             if (!message.guild) {
