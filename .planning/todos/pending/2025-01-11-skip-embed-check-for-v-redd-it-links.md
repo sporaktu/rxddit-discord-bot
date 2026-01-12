@@ -9,15 +9,21 @@ files:
 
 ## Problem
 
-When a link is a direct v.redd.it URL (e.g., `https://v.redd.it/8iudhwqogrcg1`), the bot currently waits 5 seconds to check for video/gallery embeds before deciding whether to keep or auto-revert the conversion.
+When a link is a direct v.redd.it URL (e.g., `https://v.redd.it/8iudhwqogrcg1`), the bot currently:
+1. Converts the link to redditez.com ✓
+2. Waits 5 seconds for embeds to load
+3. Checks if the embed contains video/gallery content
+4. Auto-reverts if no video/gallery detected
 
-For v.redd.it links, this check is unnecessary — these are always direct video links and should always be converted to redditez without the embed check delay.
+The 5-second verification step (steps 2-4) is unnecessary for v.redd.it links because they are **always** embedded videos. The conversion should still happen, but the verification can be skipped.
 
 ## Solution
 
-Detect v.redd.it URLs in the link detection/conversion flow and skip the 5-second embed check for these links. Either:
-1. Add a flag to mark links as "guaranteed video" and bypass `hasVideoOrGallery()` check
-2. Check if all detected links are v.redd.it before starting the embed wait timer
-3. Modify the auto-revert logic to never revert v.redd.it conversions
+Keep the v.redd.it → redditez.com conversion, but skip the 5-second embed verification step for v.redd.it links.
 
-TBD: Determine best approach based on code structure.
+Approach:
+1. After detecting links, check if any are v.redd.it URLs
+2. If all detected links are v.redd.it, skip the `setTimeout` and `hasVideoOrGallery()` check entirely
+3. The converted message stays permanently (no auto-revert possibility)
+
+This saves 5 seconds of delay and avoids unnecessary Discord API calls for links that are guaranteed to be videos.
