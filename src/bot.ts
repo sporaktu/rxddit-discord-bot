@@ -176,6 +176,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
             // Check if all links are v.redd.it (direct video links)
             // v.redd.it links are always video content, so skip the embed verification
+            // Note: If ANY link is not v.redd.it, we check all embeds to ensure
+            // mixed content (e.g., video + text post) is handled correctly
             const allLinksAreDirectVideo = redditLinks.every(link => isDirectVideoLink(link));
 
             if (allLinksAreDirectVideo) {
