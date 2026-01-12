@@ -37,6 +37,36 @@ export function isDirectVideoLink(url: string): boolean {
     return V_REDDIT_PATTERN.test(url);
 }
 
+/** Timeout for v.redd.it redirect resolution (5 seconds) */
+const VREDDIT_RESOLVE_TIMEOUT_MS = 5000;
+
+/** Valid Reddit domains for redirect validation */
+const VALID_REDDIT_DOMAINS = ['reddit.com', 'www.reddit.com', 'old.reddit.com', 'new.reddit.com'];
+
+/**
+ * Extracts video ID from v.redd.it URL and constructs fallback reddit.com URL
+ * @param url - v.redd.it URL
+ * @returns Constructed reddit.com/video/{id} URL
+ */
+function constructFallbackVideoUrl(url: string): string {
+    const videoId = url.replace(/^https?:\/\/v\.redd\.it\//i, '').split(/[?#]/)[0];
+    return `https://www.reddit.com/video/${videoId}`;
+}
+
+/**
+ * Validates that a URL is from an allowed Reddit domain
+ * @param url - URL to validate
+ * @returns true if URL is from a valid Reddit domain
+ */
+function isValidRedditDomain(url: string): boolean {
+    try {
+        const hostname = new URL(url).hostname;
+        return VALID_REDDIT_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
+    } catch {
+        return false;
+    }
+}
+
 /**
  * Resolves a v.redd.it URL to its actual reddit.com URL by following redirects
  * v.redd.it links redirect to reddit.com/video/{id} which embeds properly
@@ -48,29 +78,38 @@ export async function resolveVRedditUrl(url: string): Promise<string> {
         return url;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), VREDDIT_RESOLVE_TIMEOUT_MS);
+
     try {
         // Make a HEAD request to follow redirects without downloading content
         const response = await fetch(url, {
             method: 'HEAD',
             redirect: 'follow',
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'rxddit-discord-bot/1.0 (Discord embed helper)',
+            },
         });
+        clearTimeout(timeoutId);
 
         // Return the final URL after redirects
         const resolvedUrl = response.url;
 
-        // Verify we got a reddit.com URL
-        if (resolvedUrl.includes('reddit.com')) {
+        // Validate redirect is to a known Reddit domain (security: prevent SSRF)
+        if (isValidRedditDomain(resolvedUrl)) {
             return resolvedUrl;
         }
 
         // Fallback: construct the URL manually based on known pattern
-        // v.redd.it/{id} -> reddit.com/video/{id}
-        const videoId = url.replace(/^https?:\/\/v\.redd\.it\//i, '').split(/[?#]/)[0];
-        return `https://www.reddit.com/video/${videoId}`;
+        return constructFallbackVideoUrl(url);
     } catch (error) {
-        // If fetch fails, construct the URL manually based on known pattern
-        const videoId = url.replace(/^https?:\/\/v\.redd\.it\//i, '').split(/[?#]/)[0];
-        return `https://www.reddit.com/video/${videoId}`;
+        clearTimeout(timeoutId);
+        // Log error for debugging (timeout, network issues, etc.)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.debug(`Failed to resolve v.redd.it URL ${url}: ${errorMessage}`);
+        // Fallback: construct the URL manually based on known pattern
+        return constructFallbackVideoUrl(url);
     }
 }
 
