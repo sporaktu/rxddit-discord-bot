@@ -38,6 +38,43 @@ export function isDirectVideoLink(url: string): boolean {
 }
 
 /**
+ * Resolves a v.redd.it URL to its actual reddit.com URL by following redirects
+ * v.redd.it links redirect to reddit.com/video/{id} which embeds properly
+ * @param url - v.redd.it URL to resolve
+ * @returns Promise resolving to the actual reddit.com URL, or original URL if resolution fails
+ */
+export async function resolveVRedditUrl(url: string): Promise<string> {
+    if (!isDirectVideoLink(url)) {
+        return url;
+    }
+
+    try {
+        // Make a HEAD request to follow redirects without downloading content
+        const response = await fetch(url, {
+            method: 'HEAD',
+            redirect: 'follow',
+        });
+
+        // Return the final URL after redirects
+        const resolvedUrl = response.url;
+
+        // Verify we got a reddit.com URL
+        if (resolvedUrl.includes('reddit.com')) {
+            return resolvedUrl;
+        }
+
+        // Fallback: construct the URL manually based on known pattern
+        // v.redd.it/{id} -> reddit.com/video/{id}
+        const videoId = url.replace(/^https?:\/\/v\.redd\.it\//i, '').split(/[?#]/)[0];
+        return `https://www.reddit.com/video/${videoId}`;
+    } catch (error) {
+        // If fetch fails, construct the URL manually based on known pattern
+        const videoId = url.replace(/^https?:\/\/v\.redd\.it\//i, '').split(/[?#]/)[0];
+        return `https://www.reddit.com/video/${videoId}`;
+    }
+}
+
+/**
  * Checks if a URL is an image based on file extension
  * @param url - URL to check
  * @returns true if URL appears to be an image
