@@ -1,4 +1,4 @@
-import { detectRedditLinks, convertToRxddit, convertMessageLinks, REDDIT_PATTERNS } from '../src/linkUtils';
+import { detectRedditLinks, convertToRxddit, convertMessageLinks, isDirectVideoLink, REDDIT_PATTERNS } from '../src/linkUtils';
 
 describe('Reddit Link Detection', () => {
     describe('detectRedditLinks', () => {
@@ -403,6 +403,68 @@ describe('Reddit Link Detection', () => {
             REDDIT_PATTERNS.forEach(pattern => {
                 expect(pattern.flags).toContain('g');
                 expect(pattern.flags).toContain('i');
+            });
+        });
+    });
+
+    describe('isDirectVideoLink', () => {
+        describe('v.redd.it URLs', () => {
+            it('should return true for v.redd.it with https', () => {
+                expect(isDirectVideoLink('https://v.redd.it/8iudhwqogrcg1')).toBe(true);
+            });
+
+            it('should return true for v.redd.it with http', () => {
+                expect(isDirectVideoLink('http://v.redd.it/abc123')).toBe(true);
+            });
+
+            it('should return true for v.redd.it with long video IDs', () => {
+                expect(isDirectVideoLink('https://v.redd.it/o56al2p8gr9g1')).toBe(true);
+            });
+
+            it('should be case insensitive', () => {
+                expect(isDirectVideoLink('https://V.REDD.IT/abc123')).toBe(true);
+                expect(isDirectVideoLink('https://V.Redd.It/abc123')).toBe(true);
+            });
+        });
+
+        describe('non-v.redd.it URLs', () => {
+            it('should return false for reddit.com URLs', () => {
+                expect(isDirectVideoLink('https://reddit.com/r/videos/comments/abc123')).toBe(false);
+            });
+
+            it('should return false for www.reddit.com URLs', () => {
+                expect(isDirectVideoLink('https://www.reddit.com/r/test')).toBe(false);
+            });
+
+            it('should return false for old.reddit.com URLs', () => {
+                expect(isDirectVideoLink('https://old.reddit.com/r/test')).toBe(false);
+            });
+
+            it('should return false for i.redd.it image URLs', () => {
+                expect(isDirectVideoLink('https://i.redd.it/image.jpg')).toBe(false);
+            });
+
+            it('should return false for preview.redd.it URLs', () => {
+                expect(isDirectVideoLink('https://preview.redd.it/image.png')).toBe(false);
+            });
+
+            it('should return false for non-Reddit URLs', () => {
+                expect(isDirectVideoLink('https://youtube.com/watch?v=abc123')).toBe(false);
+                expect(isDirectVideoLink('https://google.com')).toBe(false);
+            });
+
+            it('should return false for empty string', () => {
+                expect(isDirectVideoLink('')).toBe(false);
+            });
+        });
+
+        describe('edge cases', () => {
+            it('should not match v.redd.it in middle of URL', () => {
+                expect(isDirectVideoLink('https://example.com/v.redd.it/abc')).toBe(false);
+            });
+
+            it('should not match partial v.redd.it domains', () => {
+                expect(isDirectVideoLink('https://notv.redd.it/abc')).toBe(false);
             });
         });
     });

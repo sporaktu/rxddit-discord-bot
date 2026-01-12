@@ -13,7 +13,7 @@ import {
     Embed
 } from 'discord.js';
 import { getDatabase, closeDatabase, MessageDatabase } from './database';
-import { detectRedditLinks, convertToRxddit, convertMessageLinks, ROBOT_EMOJI } from './linkUtils';
+import { detectRedditLinks, convertToRxddit, convertMessageLinks, isDirectVideoLink, ROBOT_EMOJI } from './linkUtils';
 
 // Load environment variables
 config();
@@ -174,50 +174,60 @@ client.on(Events.MessageCreate, async (message: Message) => {
                 await botMessage.react(ROBOT_EMOJI);
             }
 
-            // Wait for embeds to load, then check if content is video/gallery
-            // If not, auto-revert to show original Reddit embeds
-            await new Promise(resolve => setTimeout(resolve, EMBED_WAIT_MS));
+            // Check if all links are v.redd.it (direct video links)
+            // v.redd.it links are always video content, so skip the embed verification
+            // Note: If ANY link is not v.redd.it, we check all embeds to ensure
+            // mixed content (e.g., video + text post) is handled correctly
+            const allLinksAreDirectVideo = redditLinks.every(link => isDirectVideoLink(link));
 
-            try {
-                // Fetch the bot message to get updated embeds
-                const updatedBotMessage = await message.channel.messages.fetch(botMessage.id);
-                const embeds = updatedBotMessage.embeds;
+            if (allLinksAreDirectVideo) {
+                console.log(`All links are v.redd.it (direct video), skipping embed check for ${message.author.tag}`);
+            } else {
+                // Wait for embeds to load, then check if content is video/gallery
+                // If not, auto-revert to show original Reddit embeds
+                await new Promise(resolve => setTimeout(resolve, EMBED_WAIT_MS));
 
-                console.log(`Checking embeds for message ${botMessage.id}: found ${embeds.length} embed(s)`);
+                try {
+                    // Fetch the bot message to get updated embeds
+                    const updatedBotMessage = await message.channel.messages.fetch(botMessage.id);
+                    const embeds = updatedBotMessage.embeds;
 
-                // If no video or gallery content, auto-revert
-                if (!hasVideoOrGallery(embeds)) {
-                    console.log(`No video/gallery content detected, auto-reverting for ${message.author.tag}`);
+                    console.log(`Checking embeds for message ${botMessage.id}: found ${embeds.length} embed(s)`);
 
-                    // Mark as reverted in database (atomic operation)
-                    const didRevert = db.markAsReverted(message.id);
-                    if (didRevert) {
-                        // Delete the bot's message
-                        try {
-                            await updatedBotMessage.delete();
-                            console.log(`Deleted bot message (auto-revert)`);
-                        } catch (deleteError) {
-                            console.log(`Could not delete bot message during auto-revert`);
-                        }
+                    // If no video or gallery content, auto-revert
+                    if (!hasVideoOrGallery(embeds)) {
+                        console.log(`No video/gallery content detected, auto-reverting for ${message.author.tag}`);
 
-                        // Unsuppress embeds on original message
-                        if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.ManageMessages)) {
+                        // Mark as reverted in database (atomic operation)
+                        const didRevert = db.markAsReverted(message.id);
+                        if (didRevert) {
+                            // Delete the bot's message
                             try {
-                                await message.suppressEmbeds(false);
-                                console.log(`Unsuppressed original embeds (auto-revert)`);
-                            } catch (unsuppressError) {
-                                console.log(`Could not unsuppress original embeds during auto-revert`);
+                                await updatedBotMessage.delete();
+                                console.log(`Deleted bot message (auto-revert)`);
+                            } catch (deleteError) {
+                                console.log(`Could not delete bot message during auto-revert`);
                             }
-                        }
 
-                        console.log(`Auto-revert completed for message ${message.id}`);
+                            // Unsuppress embeds on original message
+                            if (message.channel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.ManageMessages)) {
+                                try {
+                                    await message.suppressEmbeds(false);
+                                    console.log(`Unsuppressed original embeds (auto-revert)`);
+                                } catch (unsuppressError) {
+                                    console.log(`Could not unsuppress original embeds during auto-revert`);
+                                }
+                            }
+
+                            console.log(`Auto-revert completed for message ${message.id}`);
+                        }
+                    } else {
+                        console.log(`Video/gallery content detected, keeping rxddit embed for ${message.author.tag}`);
                     }
-                } else {
-                    console.log(`Video/gallery content detected, keeping rxddit embed for ${message.author.tag}`);
+                } catch (embedCheckError) {
+                    // If we can't check embeds, keep the rxddit version (safer for video content)
+                    console.log(`Could not check embeds for message ${botMessage.id}, keeping rxddit version`);
                 }
-            } catch (embedCheckError) {
-                // If we can't check embeds, keep the rxddit version (safer for video content)
-                console.log(`Could not check embeds for message ${botMessage.id}, keeping rxddit version`);
             }
 
         } catch (error) {

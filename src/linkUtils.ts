@@ -22,6 +22,22 @@ export const ROBOT_EMOJI = '🤖';
 const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i;
 
 /**
+ * Pattern to match v.redd.it direct video URLs
+ * These are always video content, so we can skip embed verification
+ */
+const V_REDDIT_PATTERN = /^https?:\/\/v\.redd\.it\//i;
+
+/**
+ * Checks if a URL is a v.redd.it direct video link
+ * v.redd.it links are always video content and don't need embed verification
+ * @param url - URL to check
+ * @returns true if URL is a v.redd.it link
+ */
+export function isDirectVideoLink(url: string): boolean {
+    return V_REDDIT_PATTERN.test(url);
+}
+
+/**
  * Checks if a URL is an image based on file extension
  * @param url - URL to check
  * @returns true if URL appears to be an image
